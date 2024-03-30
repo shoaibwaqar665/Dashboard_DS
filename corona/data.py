@@ -4,7 +4,7 @@ import plotly.graph_objects as go
 import plotly.express as px
 
 # Load the dataset
-df = pd.read_csv('corona_NLP_test_annotated.csv')
+df = pd.read_csv('corona/corona_NLP_test_annotated.csv')
 
 # Prepare sentiment counts for the bar and pie charts
 sentiment_counts = df['generated annotations'].value_counts().reset_index()
@@ -21,10 +21,11 @@ fig = make_subplots(
     rows=2, cols=2,
     specs=[[{"type": "bar"}, {"type": "pie"}], [{"colspan": 2}, None]],
     subplot_titles=('Distribution of Tweet Sentiments', 'Sentiment Proportions', 'Histogram of Tweet Lengths'),
-    vertical_spacing=0.1
+    vertical_spacing=0.15,  # Adjusted vertical spacing for clarity
+    horizontal_spacing=0.1  # Adjusted horizontal spacing for separation between plots
 )
 
-# Bar chart for sentiment distribution
+# Add the bar chart for sentiment distribution to the first row, first column
 for i, sentiment in enumerate(sentiment_counts['Sentiment'].unique()):
     fig.add_trace(
         go.Bar(
@@ -37,7 +38,7 @@ for i, sentiment in enumerate(sentiment_counts['Sentiment'].unique()):
         row=1, col=1
     )
 
-# Pie chart for sentiment proportions
+# Add the pie chart for sentiment proportions to the first row, second column
 fig.add_trace(
     go.Pie(
         labels=sentiment_counts['Sentiment'],
@@ -49,7 +50,7 @@ fig.add_trace(
     row=1, col=2
 )
 
-# Histogram for tweet lengths
+# Add the histogram for tweet lengths to the second row, spanning both columns
 fig.add_trace(
     go.Histogram(
         x=df['Tweet Length'],
@@ -60,30 +61,35 @@ fig.add_trace(
     row=2, col=1
 )
 
-# Customize the layout
+# Customize the layout for styling and spacing
 fig.update_layout(
-    height=800,
+    height=1000,  # Adjusted height for a better layout
     showlegend=True,
     title_text="COVID-19 Tweet Analysis Dashboard",
     legend_title_text='Sentiment',
-    template='plotly_white'
+    template='plotly_white',
+    title_font=dict(size=24, color="RebeccaPurple"),  # Styling for the main title
+    margin=dict(l=20, r=20, t=85, b=20),  # Margins adjusted for a clean layout
+    paper_bgcolor='rgba(243, 243, 243, 1)',  # Consistent background color
+    plot_bgcolor='rgba(243, 243, 243, 1)',  # Matching plot background
 )
 
-# Update axes titles
-fig.update_yaxes(title_text="Number of Tweets", row=1, col=1)
-fig.update_xaxes(title_text="Sentiment", row=1, col=1)
-fig.update_yaxes(title_text="Count", row=2, col=1)
-fig.update_xaxes(title_text="Tweet Length", row=2, col=1)
+# Update axes and grid lines for clarity and style
+fig.update_xaxes(showline=True, linewidth=2, linecolor='black', gridcolor='lightgrey')
+fig.update_yaxes(showline=True, linewidth=2, linecolor='black', gridcolor='lightgrey')
 
-# Add annotations or dynamic titles if necessary
-# For example, an annotation for the histogram
+# Update axes titles with custom font styling
+fig.update_yaxes(title_font=dict(size=14, color="DarkBlue"))
+fig.update_xaxes(title_font=dict(size=14, color="DarkBlue"))
+
+# Annotations for additional insights or comments
 fig.add_annotation(
     text="Distribution of tweet lengths",
     xref="paper", yref="paper",
     x=0.5, y=0.4, showarrow=False,
-    font=dict(size=12, color="rgba(0, 0, 0, 0.5)"),
+    font=dict(size=12, color="DarkSlateGray"),
     align="center"
 )
 
-# Show the figure
+# Display the dashboard
 fig.show()
