@@ -39,7 +39,19 @@ fig.update_xaxes(title_font=dict(size=14, color="DarkBlue"))
 
 # Initialize the Dash app
 app = dash.Dash(__name__)
-
+app.css.append_css({"external_url": "https://codepen.io/chriddyp/pen/bWLwgP.css"})
+app.layout = html.Div(className='container', children=[
+    html.Div(className='row', children=[
+        html.Div(className='twelve columns', children=[
+            html.H1('COVID-19 Tweet Analysis Dashboard', style={'color': 'RebeccaPurple', 'marginTop': '20px'}),
+        ]),
+    ]),
+    html.Div(className='row', children=[
+        html.Div(className='twelve columns', children=[
+            dcc.Graph(id='covid-tweet-analysis', figure=fig),
+        ]),
+    ]),
+])
 # Define the app layout
 app.layout = html.Div(style={'textAlign': 'center', 'width': '80%', 'margin': 'auto'}, children=[
     html.H1('COVID-19 Tweet Analysis Dashboard', style={'color': 'RebeccaPurple'}),
