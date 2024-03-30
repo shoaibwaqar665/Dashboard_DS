@@ -5,18 +5,24 @@ import pandas as pd
 import plotly.graph_objects as go
 import plotly.express as px
 from plotly.subplots import make_subplots
+import psycopg2
 # Load and prepare the dataset
-df = pd.read_csv('corona/corona_NLP_test_annotated.csv')
-df['Tweet Length'] = df['tweet'].apply(len)
 
+db_params = {
+    'dbname': 'corona',
+    'user': 'postgres',
+    'password': 'shoaib123',
+    'host': 'localhost'  # or your database server IP
+}
 # Initialize the Dash app
 app = dash.Dash(__name__)
 app.title = "COVID-19 Tweet Analysis Dashboard"
+conn = psycopg2.connect(**db_params)
+cur = conn.cursor()
+cur.execute("SELECT DISTINCT generated_annotations FROM tweets;")
+dropdown_options = [{'label': row[0], 'value': row[0]} for row in cur.fetchall()]
+conn.close()
 
-# Define dropdown options for sentiment filter
-dropdown_options = [{'label': sentiment, 'value': sentiment} for sentiment in df['generated annotations'].unique()]
-
-# Adjustments to the Dash app layout, focusing on the search bar styling
 app.layout = html.Div([
     html.H1('COVID-19 Tweet Analysis Dashboard', style={'textAlign': 'center', 'color': 'RebeccaPurple'}),
     dcc.Dropdown(id='sentiment-filter', options=dropdown_options, value=[], multi=True, placeholder='Filter by sentiment', style={'marginBottom': '10px'}),
@@ -25,40 +31,59 @@ app.layout = html.Div([
     dcc.Graph(id='tweet-analysis-plot'),
 ], style={'padding': '20px'})
 
-
 @app.callback(
     Output('tweet-analysis-plot', 'figure'),
     [Input('sentiment-filter', 'value'),
      Input('keyword-search', 'value')]
 )
 def update_figure(selected_sentiments, search_keyword):
-    # Filter the dataframe based on selected sentiments and search keyword
-    filtered_df = df
+    # Prepare the query with dynamic filtering based on user input
+    query = """
+    SELECT tweet, generated_annotations, explanation, CHAR_LENGTH(tweet) AS tweet_length
+    FROM tweets WHERE 1=1
+    """
+    params = []
     if selected_sentiments:
-        filtered_df = filtered_df[filtered_df['generated annotations'].isin(selected_sentiments)]
+        query += " AND generated_annotations IN %s"
+        params.append(tuple(selected_sentiments))
     if search_keyword:
-        filtered_df = filtered_df[filtered_df['tweet'].str.contains(search_keyword, case=False, na=False)]
+        keyword_filter = f'%{search_keyword}%'
+        query += " AND (tweet LIKE %s OR Prompt LIKE %s OR explanation LIKE %s)"
+        params.extend([keyword_filter] * 3)
     
-    # Prepare sentiment counts for the filtered data
-    sentiment_counts = filtered_df['generated annotations'].value_counts().reset_index()
-    sentiment_counts.columns = ['Sentiment', 'Count']
-    
-    # Recreate the figure with the filtered data
-    fig = make_subplots(rows=2, cols=2, specs=[[{"type": "bar"}, {"type": "pie"}], [{"colspan": 2}, None]],
-                        subplot_titles=('Distribution of Tweet Sentiments', 'Sentiment Proportions', 'Histogram of Tweet Lengths'),
-                        vertical_spacing=0.15, horizontal_spacing=0.1)
-    
-    color_palette = px.colors.qualitative.Plotly
-    for i, sentiment in enumerate(sentiment_counts['Sentiment'].unique()):
-        fig.add_trace(go.Bar(x=[sentiment], y=[sentiment_counts[sentiment_counts['Sentiment'] == sentiment]['Count'].values[0]],
-                            name=sentiment, marker=dict(color=color_palette[i])), row=1, col=1)
-    
-    fig.add_trace(go.Pie(labels=sentiment_counts['Sentiment'], values=sentiment_counts['Count'], marker=dict(colors=color_palette)), row=1, col=2)
-    fig.add_trace(go.Histogram(x=filtered_df['Tweet Length'], marker=dict(color='pink')), row=2, col=1)
-    
-    fig.update_layout(height=800, showlegend=True, title_text="Filtered COVID-19 Tweet Analysis")
-    
-    return fig
+    # Execute the query
+    with psycopg2.connect(**db_params) as conn:
+        cur = conn.cursor()
+        cur.execute(query, params)
+        rows = cur.fetchall()
+        df_filtered = pd.DataFrame(rows, columns=['tweet', 'generated_annotations', 'explanation', 'tweet_length'])
 
+    # Create the subplot structure
+    fig = make_subplots(rows=2, cols=2, specs=[[{"type": "bar"}, {"type": "pie"}], [{"colspan": 2}, None]],
+                        subplot_titles=('Sentiment Distribution', 'Sentiment Proportion', 'Tweet Length Distribution'))
+
+    # Check if the filtered DataFrame is not empty
+    if not df_filtered.empty:
+        sentiment_counts = df_filtered['generated_annotations'].value_counts()
+
+        # Bar Chart for Sentiment Distribution
+        fig.add_trace(go.Bar(x=sentiment_counts.index, y=sentiment_counts.values, name='Sentiment Distribution'),
+                      row=1, col=1)
+
+        # Pie Chart for Sentiment Proportion
+        fig.add_trace(go.Pie(labels=sentiment_counts.index, values=sentiment_counts.values, name='Sentiment Proportion'),
+                      row=1, col=2)
+
+        # Histogram for Tweet Length Distribution
+        fig.add_trace(go.Histogram(x=df_filtered['tweet_length'], name='Tweet Length'),
+                      row=2, col=1)
+
+        # Update layout for better visual representation
+        fig.update_layout(height=600, showlegend=True, title_text="COVID-19 Tweet Analysis Dashboard")
+    else:
+        # If no data matches the filters, display a message
+        fig.add_annotation(text="No data matches the selected filters.", x=0.5, y=0.5, showarrow=False, font_size=16, xref="paper", yref="paper")
+
+    return fig
 if __name__ == '__main__':
     app.run_server(debug=True)
