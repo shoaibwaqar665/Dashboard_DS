@@ -16,13 +16,15 @@ app.title = "COVID-19 Tweet Analysis Dashboard"
 # Define dropdown options for sentiment filter
 dropdown_options = [{'label': sentiment, 'value': sentiment} for sentiment in df['generated annotations'].unique()]
 
-# App layout with filter and search capabilities
+# Adjustments to the Dash app layout, focusing on the search bar styling
 app.layout = html.Div([
     html.H1('COVID-19 Tweet Analysis Dashboard', style={'textAlign': 'center', 'color': 'RebeccaPurple'}),
-    dcc.Dropdown(id='sentiment-filter', options=dropdown_options, value=[], multi=True, placeholder='Filter by sentiment'),
-    dcc.Input(id='keyword-search', type='text', placeholder='Search tweets by keyword', style={'margin': '10px'}),
+    dcc.Dropdown(id='sentiment-filter', options=dropdown_options, value=[], multi=True, placeholder='Filter by sentiment', style={'marginBottom': '10px'}),
+    html.Div(dcc.Input(id='keyword-search', type='text', placeholder='Search tweets by keyword', 
+                       style={'width': '98%', 'padding': '10px', 'margin': '10px 0', 'borderRadius': '5px', 'border': '1px solid #ddd'})),
     dcc.Graph(id='tweet-analysis-plot'),
-])
+], style={'padding': '20px'})
+
 
 @app.callback(
     Output('tweet-analysis-plot', 'figure'),
@@ -52,7 +54,7 @@ def update_figure(selected_sentiments, search_keyword):
                             name=sentiment, marker=dict(color=color_palette[i])), row=1, col=1)
     
     fig.add_trace(go.Pie(labels=sentiment_counts['Sentiment'], values=sentiment_counts['Count'], marker=dict(colors=color_palette)), row=1, col=2)
-    fig.add_trace(go.Histogram(x=filtered_df['Tweet Length'], marker=dict(color='rgba(0, 0, 0, 0.5)')), row=2, col=1)
+    fig.add_trace(go.Histogram(x=filtered_df['Tweet Length'], marker=dict(color='pink')), row=2, col=1)
     
     fig.update_layout(height=800, showlegend=True, title_text="Filtered COVID-19 Tweet Analysis")
     
