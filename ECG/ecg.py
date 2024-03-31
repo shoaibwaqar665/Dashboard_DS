@@ -3,17 +3,21 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
 # Load the dataset
-file_path = 'dataset/JS00001_filtered.csv'  # Make sure this path is correct for your setup
+file_path = 'dataset/JS00001_filtered.csv'  # Update this path as necessary
 ecg_data = pd.read_csv(file_path)
 
 # Define leads
 leads = ['I', 'II', 'III', 'aVR', 'aVL', 'aVF', 'V1', 'V2', 'V3', 'V4', 'V5', 'V6']
 
-# Create subplots with specific layout: 1 row for line plots, 1 row for histograms, and 1 row for the scatter plot
-fig = make_subplots(rows=3, cols=1,
-                    subplot_titles=("ECG Signal Over Time", "Histogram of Signal Amplitudes", "Scatter Plot: Lead I vs Lead II"),
+# Calculate the rolling average for Lead I with a window of 100 data points
+ecg_data['RollingAvg'] = ecg_data['I'].rolling(window=100).mean()
+
+# Create subplots with an additional row for the rolling average plot
+fig = make_subplots(rows=4, cols=1,
+                    subplot_titles=("ECG Signal Over Time", "Histogram of Signal Amplitudes", 
+                                    "Scatter Plot: Lead I vs Lead II", "Rolling Average: Lead I"),
                     vertical_spacing=0.1,
-                    specs=[[{"type": "scatter"}], [{"type": "histogram"}], [{"type": "scatter"}]])
+                    specs=[[{"type": "scatter"}], [{"type": "histogram"}], [{"type": "scatter"}], [{"type": "scatter"}]])
 
 # Add a line plot for each lead in the first row
 for lead in leads:
@@ -33,8 +37,18 @@ fig.add_trace(
     row=3, col=1
 )
 
-# Adjust the layout to accommodate the scatter plot
-fig.update_layout(height=1200, title_text="Comprehensive ECG Data Analysis", showlegend=True)
+# Add the rolling average plot for Lead I in the fourth row
+fig.add_trace(
+    go.Scatter(x=ecg_data['time'], y=ecg_data['I'], mode='lines', name='Original Signal'),
+    row=4, col=1
+)
+fig.add_trace(
+    go.Scatter(x=ecg_data['time'], y=ecg_data['RollingAvg'], mode='lines', name='Rolling Average'),
+    row=4, col=1
+)
+
+# Adjust the layout to accommodate the new plot
+fig.update_layout(height=1600, title_text="Comprehensive ECG Data Analysis", showlegend=True)
 
 # Show the figure
 fig.show()
